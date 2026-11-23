@@ -48,14 +48,30 @@ const categoryImages = {
 };
 function App() {
   const [exhibits, setExhibits] = useState(() => {
-    try { const saved = localStorage.getItem('human-museum-exhibits'); return saved ? JSON.parse(saved) : starterExhibits; }
-    catch { return starterExhibits; }
-  });
+  try {
+    const saved = localStorage.getItem('human-museum-exhibits');
+    const savedExhibits = saved ? JSON.parse(saved) : [];
+
+    return [
+      ...savedExhibits,
+      ...starterExhibits.filter(
+        exhibit => !savedExhibits.some(saved => saved.id === exhibit.id)
+      )
+    ];
+  } catch {
+    return starterExhibits;
+  }
+});
   const [category, setCategory] = useState('All exhibits');
   const [search, setSearch] = useState('');
   const [selected, setSelected] = useState(null);
-  const [showAdd, setShowAdd] = useState(false);
-  const [form, setForm] = useState({ title: '', category: 'Memories', short: '', story: '', by: '' });
+ const [showAdd, setShowAdd] = useState(false);
+const [showAuth, setShowAuth] = useState(false);
+const [authMode, setAuthMode] = useState('register');
+const [demoUser, setDemoUser] = useState('');
+const [authForm, setAuthForm] = useState({ name: '', email: '', password: '' });
+
+const [form, setForm] = useState({ title: '', category: 'Memories', short: '', story: '', by: '' });
   const [toast, setToast] = useState('');
 
   useEffect(() => { localStorage.setItem('human-museum-exhibits', JSON.stringify(exhibits)); }, [exhibits]);
@@ -95,7 +111,20 @@ const filtered = useMemo(() => {
     return true;
   });
 }, [exhibits, category, search]);
+function handleDemoAuth(e) {
+  e.preventDefault();
 
+  const name = authMode === 'register'
+    ? authForm.name.trim()
+    : authForm.email.split('@')[0];
+
+  setDemoUser(name || 'Museum Visitor');
+  setShowAuth(false);
+
+  setForm(prev => ({ ...prev, by: name || 'Museum Visitor' }));
+
+  setShowAdd(true);
+}
   function addExhibit(e) {
     e.preventDefault();
     const newItem = { ...form, id: `U${String(Date.now()).slice(-4)}`, by: form.by.trim() || 'A visitor', date: 'Visitor contribution' };
@@ -143,7 +172,8 @@ const filtered = useMemo(() => {
         </article>)}</div> : <div className="empty"><span>◌</span><h3>No exhibits found.</h3><p>Perhaps the thing you're looking for hasn't been added yet.</p><button className="outline-btn" onClick={() => {setSearch('');setCategory('All exhibits')}}>Reset search</button></div>}
         <div className="collection-end"><span>END OF CURRENT COLLECTION</span><span>MORE STORIES ARE WAITING TO BE DISCOVERED</span></div>
       </section>
-      <section className="contribute-banner"><div><span className="eyebrow">THE MUSEUM IS ALWAYS GROWING</span><h2>Have something<br/><em>worth preserving?</em></h2><p>Every human experience is an exhibit waiting to happen. Add yours to the collection.</p></div><button className="solid-btn" onClick={() => setShowAdd(true)}>Add an exhibit <span>＋</span></button></section>
+      <section className="contribute-banner"><div><span className="eyebrow">THE MUSEUM IS ALWAYS GROWING</span><h2>Have something<br/><em>worth preserving?</em></h2><p>Every human experience is an exhibit waiting to happen. Add yours to the collection.</p></div>
+<button className="solid-btn" onClick={() => setShowAuth(true)}>Add an exhibit <span>＋</span></button>      </section>
 <section className="about" id="about">
   <span className="eyebrow">A NOTE FROM THE CURATOR</span>
 
@@ -176,6 +206,76 @@ const filtered = useMemo(() => {
     <footer><span>THE HUMAN MUSEUM © 2026</span><span>MADE FOR THE THINGS WE FEEL</span><a href="#top">BACK TO TOP ↑</a></footer>
 
     {selected && <div className="modal-backdrop" onClick={() => setSelected(null)}><div className="detail-modal" onClick={e => e.stopPropagation()}><button className="close" onClick={() => setSelected(null)}>×</button><span className="eyebrow">EXHIBIT {selected.id} / {selected.category.toUpperCase()}</span><div className="detail-art">◌</div><h2>{selected.title}</h2><p className="detail-lead">{selected.short}</p><div className="detail-story">{selected.story}</div><div className="detail-bottom"><span>CURATED BY {selected.by || 'THE MUSEUM'}</span><span>{selected.date}</span></div></div></div>}
+    {showAuth && (
+      <div className="modal-backdrop" onClick={() => setShowAuth(false)}>
+        <div className="form-modal auth-modal" onClick={e => e.stopPropagation()}>
+          <button className="close" onClick={() => setShowAuth(false)}>×</button>
+          <span className="eyebrow">A STORY BEGINS HERE</span>
+          <h2>{authMode === 'register' ? 'Join the museum.' : 'Welcome back.'}</h2>
+          <p className="form-intro">Every human experience deserves a place in the collection.</p>
+
+          <div className="auth-tabs">
+            <button
+              type="button"
+              className={authMode === 'register' ? 'active' : ''}
+              onClick={() => setAuthMode('register')}
+            >
+              Register
+            </button>
+            <button
+              type="button"
+              className={authMode === 'login' ? 'active' : ''}
+              onClick={() => setAuthMode('login')}
+            >
+              Login
+            </button>
+          </div>
+
+          <form onSubmit={handleDemoAuth}>
+            {authMode === 'register' && (
+              <label>
+                Your name
+                <input
+                  required
+                  value={authForm.name}
+                  onChange={e => setAuthForm({ ...authForm, name: e.target.value })}
+                  placeholder="What shall we call you?"
+                />
+              </label>
+            )}
+
+            <label>
+              Email
+              <input
+                type="email"
+                required
+                value={authForm.email}
+                onChange={e => setAuthForm({ ...authForm, email: e.target.value })}
+                placeholder="your@email.com"
+              />
+            </label>
+
+            <label>
+              Password
+              <input
+                type="password"
+                required
+                value={authForm.password}
+                onChange={e => setAuthForm({ ...authForm, password: e.target.value })}
+                placeholder="Enter a password"
+              />
+            </label>
+
+            <button className="solid-btn submit-btn" type="submit">
+              {authMode === 'register' ? 'Create account & continue' : 'Login & continue'}
+              <span>↗</span>
+            </button>
+          </form>
+
+          <p className="demo-note">Demo version — no real account is created.</p>
+        </div>
+      </div>
+    )}
     {showAdd && <div className="modal-backdrop" onClick={() => setShowAdd(false)}><div className="form-modal" onClick={e => e.stopPropagation()}><button className="close" onClick={() => setShowAdd(false)}>×</button><span className="eyebrow">CONTRIBUTE TO THE COLLECTION</span><h2>Add an exhibit.</h2><p className="form-intro">Preserve a thought, moment or feeling. It doesn't have to be extraordinary.</p><form onSubmit={addExhibit}><label>Exhibit title<input required maxLength="55" placeholder="Give your experience a name" value={form.title} onChange={e => setForm({...form,title:e.target.value})}/></label><label>Category<select value={form.category} onChange={e => setForm({...form,category:e.target.value})}>{categories.slice(1).map(c => <option key={c}>{c}</option>)}</select></label><label>Short description<textarea required rows="2" maxLength="150" placeholder="A one-line introduction..." value={form.short} onChange={e => setForm({...form,short:e.target.value})}/></label><label>The story<textarea required rows="4" placeholder="Tell us a little more..." value={form.story} onChange={e => setForm({...form,story:e.target.value})}/></label><label>Your name (optional)<input maxLength="35" placeholder="Anonymous is okay" value={form.by} onChange={e => setForm({...form,by:e.target.value})}/></label><button className="solid-btn submit-btn" type="submit">Add to the museum <span>↗</span></button></form></div></div>}
     {toast && <div className="toast">✳ {toast}</div>}
   </div>;
